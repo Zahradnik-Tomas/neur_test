@@ -1,4 +1,5 @@
-import random
+import pickle
+import os
 
 import numpy as np  # nesnasim ho
 
@@ -98,27 +99,16 @@ class NN:
         if self.funkceChyby is not None:
             return self.funkceChyby.deriv(spravne, self.vystup)
 
+    def uloz(self, soubor="neuronka.bin"):
+        with open(soubor, "wb") as temp:
+            pickle.dump(self, temp)
 
-list = [0, 1]
+    @staticmethod
+    def nacti(soubor="neuronka.bin"):
+        if os.path.isfile(soubor):
+            with open(soubor, "rb") as temp:
+                return pickle.load(temp)
+        else:
+            raise Exception(f"Soubor '{soubor}' neexistuje")
 
-
-def trenovat(sit, kolikrat):
-    for i in range(kolikrat):
-        n = [random.choice(list), random.choice(list)]
-        sit.forward(n)
-        sit.back(sit.ziskejChybu([abs((n[0] ^ n[1]) - 1), n[0] ^ n[1]]))
-
-
-a = NN([SS(2, 3), Sigmoid(), SS(3, 2), SoftMax()], 0.2, ChybovkaE())
-
-# TODO moznost ulozit a nacist
 # TODO otestovat rozdil rychlosti s ne numpy NN na MNISTu
-
-trenovat(a, 100000)
-
-print()
-print(a.forward([0, 0]))
-print(a.forward([0, 1]))
-print(a.forward([1, 0]))
-print(a.forward([1, 1]))
-print()
