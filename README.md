@@ -1,3 +1,7 @@
 # neur_test
 
-dal jsem svou dosavadni praci cislo 2, pokud zas nezapomenu na pouzivani verzovaciho systemu tak mozna i bude vice nez 1 push
+netusim jak na toto napsat requirements
+
+proste nainstalujte <https://docs.cupy.dev/en/latest/install.html>
+
+je to logicky pomalejsi na malych sitich nez numpy implementace

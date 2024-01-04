@@ -1,80 +1,74 @@
 import pickle
 import os
 
-import numpy as np  # nesnasim ho
+import cupy as cp  # snad pujde videt rozdil ve vykonu
+import cupyx.scipy.special
+import numpy as np
 
-
-# dalsi zbytecny komentar
 
 class ChybovkaE:
     @staticmethod
     def funkce(spravne, vystupSite):
-        return np.sum(np.power((np.array(spravne) - np.array(vystupSite)), 2)) / 2
+        return np.true_divide(np.sum(
+            np.power(np.subtract(cp.asnumpy(spravne), cp.asnumpy(vystupSite)),
+                     2.0)), 2.0)  # numpy misto cupy, protoze to nechci hazet: cpu -> gpu -> cpu
 
     @staticmethod
     def deriv(spravne, vystupSite):
-        return np.array(spravne) - np.array(vystupSite)
+        return np.subtract(cp.asnumpy(spravne), cp.asnumpy(vystupSite))
 
 
 class Sigmoid:
 
     def forward(self, vstup):
-        self.vstup = vstup
-        vystup = []
-        for cislo in vstup:
-            if cislo >= 0:
-                vystup.append(1 / (1 + np.exp(-cislo)))
-            else:
-                temp = np.exp(cislo)
-                vystup.append(temp / (1 + temp))
-        return np.array(vystup)
+        self.vystup = cupyx.scipy.special.expit(cp.asarray(vstup, dtype=cp.float32))
+        return self.vystup
 
     def deriv(self):
-        temp = self.forward(self.vstup)
-        return temp * (1 - temp)
+        return cp.multiply(self.vystup, cp.subtract(1.0, self.vystup))
 
     def back(self, chyba, koeficientUceni):
-        return np.multiply(self.deriv(), chyba)
+        return cp.multiply(self.deriv(), cp.asarray(chyba, dtype=cp.float32))
 
 
 class SoftMax:
     def forward(self, vstup):
-        temp = np.exp(np.array(vstup) - np.max(vstup))
-        self.vystup = np.array(temp / np.sum(temp))
+        self.vystup = cupyx.scipy.special.softmax(cp.asarray(vstup, dtype=cp.float32))
         return self.vystup
 
     def deriv(self):
-        return self.vystup * (np.identity(np.size(self.vystup)) - self.vystup).T
+        return cp.multiply(self.vystup, (cp.subtract(cp.identity(cp.size(self.vystup)), self.vystup)).T)
 
     def back(self, chyba, koeficientUceni):
-        return np.dot(self.deriv(), chyba)
+        return cp.dot(self.deriv(), cp.asarray(chyba, dtype=cp.float32))
 
 
 class ReLu:
     def forward(self, vstup):
-        self.vstup = vstup
-        return np.maximum(0, vstup)
+        self.vstup = cp.copy(vstup)
+        return cp.maximum(0.0, self.vstup)
 
     def deriv(self):
-        return np.array(self.vstup) > 0
+        return cp.greater(self.vstup, 0.0)
 
     def back(self, chyba, koeficientUceni):
-        return np.multiply(self.deriv(), chyba)
+        return cp.multiply(self.deriv(), cp.asarray(chyba, dtype=cp.float32))
 
 
 class SS:  # jako Skalarni Soucin
 
     def __init__(self, pocetVstupu, pocetVystupu):  # pocetVystupu je pocet Neuronu
-        self.maticeVah = np.random.rand(pocetVstupu + 1, pocetVystupu) - 0.5  # + 1 je bias
+        self.maticeVah = cp.subtract(cp.random.rand(pocetVstupu + 1, pocetVystupu), 0.5)  # + 1 je bias
 
     def forward(self, vstup):
-        self.vstup = np.append(vstup, 1)
-        return np.dot(self.vstup.T, self.maticeVah)
+        self.vstup = cp.append(vstup, 1.0)
+        return cp.dot(self.vstup.T, self.maticeVah)
 
     def back(self, chyba, koeficientUceni):
-        chybaRaketak = np.dot(self.maticeVah[:-1], chyba)
-        self.maticeVah += koeficientUceni * np.multiply(np.array([self.vstup]).T,
-                                                        chyba)  # 'nejde' transponovat vektor ... proto to musi jit na matici
+        cp_chyba = cp.asarray(chyba, dtype=cp.float32)
+        chybaRaketak = cp.dot(self.maticeVah[:-1], cp_chyba)
+        self.maticeVah += cp.multiply(koeficientUceni, cp.multiply(cp.expand_dims(self.vstup, axis=0).T,
+                                                                   cp_chyba))  # 'nejde' transponovat vektor ... proto to musi jit na matici
         return chybaRaketak
 
 
@@ -85,13 +79,13 @@ class NN:
         self.funkceChyby = funkceChyby
 
     def forward(self, vstup):
-        self.vystup = vstup
+        self.vystup = cp.asarray(vstup, dtype=cp.float32)
         for vrstva in self.sit:
             self.vystup = vrstva.forward(self.vystup)
         return self.vystup
 
     def back(self, pocatecniChyba):
-        self.chyba = pocatecniChyba
+        self.chyba = cp.asarray(pocatecniChyba, dtype=cp.float32)
         for vrstva in reversed(self.sit):
             self.chyba = vrstva.back(self.chyba, self.koeficientUceni)
 
@@ -110,5 +104,3 @@ class NN:
                 return pickle.load(temp)
         else:
             raise Exception(f"Soubor '{soubor}' neexistuje")
-
-# TODO otestovat rozdil rychlosti s ne numpy NN na MNISTu

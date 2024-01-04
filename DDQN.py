@@ -5,6 +5,7 @@ import random
 import NN
 
 import numpy as np
+import cupy as cp
 
 
 class DDQN:
@@ -23,11 +24,10 @@ class DDQN:
         self.buffer = []
 
     def ziskejAkci(self, stav):  # mozneAkce -> pocet moznych akci
-        vystup = self.sitOnline.forward(stav)
         if np.random.random_sample() < self.epsion:
             akce = np.random.randint(self.mozneAkce)
         else:
-            akce = np.argmax(vystup)
+            akce = np.argmax(cp.asnumpy(self.sitOnline.forward(stav)))
         return akce
 
     def pridejDoBufferu(self, stAkOdNsH):  # [stav, akce, odmena, novyStav, hotovo]
@@ -39,9 +39,12 @@ class DDQN:
         return random.choice(self.buffer)
 
     def aktualizuj(self, stav, akce, odmena, novyStav, hotovo):
-        cil = odmena + self.gamma * self.sitCilova.forward(novyStav)[np.argmax(self.sitOnline.forward(novyStav))] * (
-                1 - hotovo)  # nebot to uz nikam nevede
-        momentalni = self.sitOnline.forward(stav)[akce]
+        if not hotovo:  # nebot to uz nikam nevede
+            cil = odmena + np.multiply(self.gamma, cp.asnumpy(
+                self.sitCilova.forward(novyStav)[cp.argmax(self.sitOnline.forward(novyStav))]))
+        else:
+            cil = odmena
+        momentalni = cp.asnumpy(self.sitOnline.forward(stav))[akce]
         tempChyba = self.funkceChyby.deriv(cil, momentalni)
         if self.zbyvaKroku == 0:
             self.sitCilova = copy.deepcopy(self.sitOnline)
