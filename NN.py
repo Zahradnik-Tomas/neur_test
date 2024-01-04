@@ -45,7 +45,7 @@ class SoftMax:
 
 class ReLu:
     def forward(self, vstup):
-        self.vstup = cp.copy(vstup)
+        self.vstup = cp.asarray(vstup)
         return cp.maximum(0.0, self.vstup)
 
     def deriv(self):
