@@ -57,8 +57,10 @@ class ReLu:
 
 class SS:  # jako Skalarni Soucin
 
-    def __init__(self, pocetVstupu, pocetVystupu):  # pocetVystupu je pocet Neuronu
+    def __init__(self, pocetVstupu, pocetVystupu, rozklad=0.9):  # pocetVystupu je pocet Neuronu
         self.maticeVah = cp.subtract(cp.random.rand(pocetVstupu + 1, pocetVystupu), 0.5)  # + 1 je bias
+        self.rozklad = rozklad
+        self.prum = cp.asarray([0])
 
     def forward(self, vstup):
         self.vstup = cp.append(vstup, 1.0)
@@ -67,8 +69,11 @@ class SS:  # jako Skalarni Soucin
     def back(self, chyba, koeficientUceni):
         cp_chyba = cp.asarray(chyba, dtype=cp.float32)
         chybaRaketak = cp.dot(self.maticeVah[:-1], cp_chyba)
-        self.maticeVah += cp.multiply(koeficientUceni, cp.multiply(cp.expand_dims(self.vstup, axis=0).T,
-                                                                   cp_chyba))  # 'nejde' transponovat vektor ... proto to musi jit na matici
+        self.prum = cp.add(cp.multiply(self.rozklad, self.prum), cp.multiply((1.0 - self.rozklad), cp.power(chyba, 2)))
+        self.maticeVah -= cp.multiply(koeficientUceni, cp.true_divide(cp.multiply(cp.expand_dims(self.vstup, axis=0).T,
+                                                                                  cp_chyba),
+                                      cp.add(cp.sqrt(self.prum),
+                                             0.00000001)))  # 'nejde' transponovat vektor ... proto to musi jit na matici
         return chybaRaketak
 
 
