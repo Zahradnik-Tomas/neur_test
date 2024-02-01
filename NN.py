@@ -69,11 +69,12 @@ class SS:  # jako Skalarni Soucin
     def back(self, chyba, koeficientUceni):
         cp_chyba = cp.asarray(chyba, dtype=cp.float32)
         chybaRaketak = cp.dot(self.maticeVah[:-1], cp_chyba)
-        self.prum = cp.add(cp.multiply(self.rozklad, self.prum), cp.multiply((1.0 - self.rozklad), cp.power(chyba, 2)))
-        self.maticeVah -= cp.multiply(koeficientUceni, cp.true_divide(cp.multiply(cp.expand_dims(self.vstup, axis=0).T,
-                                                                                  cp_chyba),
-                                      cp.add(cp.sqrt(self.prum),
-                                             0.00000001)))  # 'nejde' transponovat vektor ... proto to musi jit na matici
+        grad = cp.multiply(cp.expand_dims(self.vstup, axis=0).T,
+                           cp_chyba)  # 'nejde' transponovat vektor ... proto to musi jit na matici
+        self.prum = cp.add(cp.multiply(self.rozklad, self.prum), cp.multiply((1.0 - self.rozklad), cp.power(grad, 2)))
+        self.maticeVah -= cp.multiply(koeficientUceni, cp.true_divide(grad,
+                                                                      cp.add(cp.sqrt(self.prum),
+                                                                             0.00000001)))
         return chybaRaketak
 
 
