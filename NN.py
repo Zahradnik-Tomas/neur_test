@@ -74,7 +74,7 @@ class SS:  # jako Skalarni Soucin
                            cp_chyba)  # 'nejde' transponovat vektor ... proto to musi jit na matici
         self.prum = cp.add(cp.multiply(self.rozklad, self.prum), cp.multiply((1.0 - self.rozklad), cp.power(grad, 2)))
         regul = cp.multiply(2.0 * self.l2_regul, self.maticeVah)
-        self.maticeVah -= cp.multiply(koeficientUceni, cp.true_divide(grad,
+        self.maticeVah += cp.multiply(koeficientUceni, cp.true_divide(grad,
                                                                       cp.add(cp.sqrt(self.prum),
                                                                              0.00000001)))
         self.maticeVah -= regul
