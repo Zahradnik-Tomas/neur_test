@@ -1,12 +1,8 @@
 # >vyfiltrovan lepsimi algoritmy jako ES-HyperNEAT a EANT2 ... https://web.archive.org/web/20240224165757/https://raw.githubusercontent.com/iTODDLERS-BTFO/iToddlers-BTFO/master/satania/smug1.jpg
 
 import random
-import sys
 
 import numpy as np
-
-sys.setrecursionlimit(
-    9999999)  # budeme realisti, defaultni limit 1000 by stacil a drive by asi shorelo Slunce (ignorujic nedostatek pameti), nez by ho bylo dosazeno, ale jenom pro jistotu to tu necham
 
 
 class Node:
@@ -75,11 +71,11 @@ class Sit:
             self.listNodu[i] = Node(hidden=False, input=i <= pocetInputu)
 
     def Forward(self, vstup):
-        nodes = set()
-        nodes.add(self.listNodu[0])
+        nodes = []  # musi to byt list a ne mnozina, protoze mnozina je 'unordered' podle dokumentace, nevim zda me to ovlivnuje ale nechci debugovat duchy, tak radeji iteruji pres 1 if
+        nodes.append(self.listNodu[0])
         for node in range(1, self.pocetInputu + 1):
             self.listNodu[node].hodnota = vstup[node - 1]
-            nodes.add(self.listNodu[node])
+            nodes.append(self.listNodu[node])
         self.SkutecnyForward(nodes, self.krokID)
         output = []
         for i in range(self.pocetInputu + 1, self.pocetOutputu + self.pocetInputu + 1):
@@ -87,9 +83,10 @@ class Sit:
         self.krokID *= -1
         return output
 
-    def SkutecnyForward(self, nodes, krokID): # je to vice Forward nez Forward, ale chci aby Forward se jmenoval Forward, takze toto bude SkutecnyForward, tentokrat dokonce i spravnejsi a predpovidatelnejsi nez kdy byl s rekurzi
+    def SkutecnyForward(self, nodes,
+                        krokID):  # je to vice Forward nez Forward, ale chci aby Forward se jmenoval Forward, takze toto bude SkutecnyForward, tentokrat dokonce i spravnejsi a predpovidatelnejsi nez kdy byl s rekurzi
         while len(nodes) > 0:
-            nodesTemp = set()
+            nodesTemp = []
             for node in nodes:
                 if node.krokID == krokID:
                     continue
@@ -103,7 +100,7 @@ class Sit:
                 for Synapsa in node.SynapsyListOut:
                     Synapsa.krokID = krokID
                     Synapsa.hodnota = Synapsa.povolen * Synapsa.vaha * node.hodnota
-                    nodesTemp.add(self.listNodu[Synapsa.output])
+                    nodesTemp.append(self.listNodu[Synapsa.output])
                 if node.bias:
                     node.hodnota = 1.0
             nodes = nodesTemp.copy()
@@ -121,7 +118,6 @@ class Sit:
         if not Synapsa.input in self.listKonekci:
             self.listKonekci[Synapsa.input] = []
         self.listKonekci[Synapsa.input].append(Synapsa.output)
-
 
     def MoznostNoveKonekce(self,
                            input):  # prozatimni vecicka co mi pomuze tvorit nove konekce
