@@ -56,7 +56,7 @@ class Manager:  # TODO druhy, mutace, crossover, celkove lepsi implementace, nez
             self.listSiti.append(Sit(self.pocetInputu, self.pocetOutputu))
             a = random.randint(0, self.pocetInputu)
             b = random.randrange(self.pocetInputu + 1, self.pocetInputu + 1 + self.pocetOutputu)
-            idS = self.PridejEntry(0, 1)
+            idS = self.PridejEntry(a, b)
             self.listSiti[-1].PridejSynapsu(Synapsa(a, b, random.random() - 0.5, idS))
 
 
@@ -75,16 +75,38 @@ class Sit:
             self.listNodu[i] = Node(hidden=False, input=i <= pocetInputu)
 
     def Forward(self, vstup):
+        nodes = set()
+        nodes.add(self.listNodu[0])
         for node in range(1, self.pocetInputu + 1):
             self.listNodu[node].hodnota = vstup[node - 1]
-        for node in range(0,
-                          self.pocetInputu + 1):  # stejny problem, rekurze ale bude chtit hodnotu, kterou jsme jeste nenastavily
-            self.ZhotovSynapsyVeForwardu(self.listNodu[node], self.krokID)
+            nodes.add(self.listNodu[node])
+        self.SkutecnyForward(nodes, self.krokID)
         output = []
         for i in range(self.pocetInputu + 1, self.pocetOutputu + self.pocetInputu + 1):
             output.append(self.listNodu[i].hodnota)
         self.krokID *= -1
         return output
+
+    def SkutecnyForward(self, nodes, krokID): # je to vice Forward nez Forward, ale chci aby Forward se jmenoval Forward, takze toto bude SkutecnyForward, tentokrat dokonce i spravnejsi a predpovidatelnejsi nez kdy byl s rekurzi
+        while len(nodes) > 0:
+            nodesTemp = set()
+            for node in nodes:
+                if node.krokID == krokID:
+                    continue
+                node.krokID = krokID
+                if not node.input:
+                    node.hodnota = 0
+                for Synapsa in node.SynapsyListInp:
+                    node.hodnota += Synapsa.hodnota
+                if node.hidden:
+                    node.hodnota = np.tanh(node.hodnota)
+                for Synapsa in node.SynapsyListOut:
+                    Synapsa.krokID = krokID
+                    Synapsa.hodnota = Synapsa.povolen * Synapsa.vaha * node.hodnota
+                    nodesTemp.add(self.listNodu[Synapsa.output])
+                if node.bias:
+                    node.hodnota = 1.0
+            nodes = nodesTemp.copy()
 
     def PridejSynapsu(self, Synapsa):
         if Synapsa.input == Synapsa.output:  # pokud by si treba bias neuron udelal primou konekci sam na sebe, tak by jeho output zacal nekontrolovatelne rust
@@ -100,6 +122,7 @@ class Sit:
             self.listKonekci[Synapsa.input] = []
         self.listKonekci[Synapsa.input].append(Synapsa.output)
 
+
     def MoznostNoveKonekce(self,
                            input):  # prozatimni vecicka co mi pomuze tvorit nove konekce
         if input not in self.listKonekci and len(self.listNodu) > 0:
@@ -108,27 +131,6 @@ class Sit:
 
     def KontrolaNodu(self, nodeID):
         return nodeID in self.listNodu
-
-    def ZhotovSynapsyVeForwardu(self, node,
-                                krokID):  # je to vice Forward nez Forward, ale chci aby Forward se jmenoval Forward, takze toto bude Zhotoveni SynapsyVeForwardu
-        if node.krokID == krokID:
-            return
-        node.krokID = krokID
-        if not node.input:
-            node.hodnota = 0
-        for Synapsa in node.SynapsyListInp:
-            if Synapsa.krokID != krokID:
-                self.ZhotovSynapsyVeForwardu(self.listNodu[Synapsa.input], krokID)
-            node.hodnota += Synapsa.hodnota
-        if node.hidden:
-            node.hodnota = np.tanh(node.hodnota)
-        for Synapsa in node.SynapsyListOut:
-            Synapsa.krokID = krokID
-            Synapsa.hodnota = Synapsa.povolen * Synapsa.vaha * node.hodnota
-        for Synapsa in node.SynapsyListOut:  # pokud pujde rovnou do rekurze, tak nastane problem kdy node uz je oznacen jako hotovy, ale jeste nedal hodnotu synapse, kterou pouzivame
-            self.ZhotovSynapsyVeForwardu(self.listNodu[Synapsa.output], krokID)
-        if node.bias:
-            node.hodnota = 1.0
 
 
 class Entry:
