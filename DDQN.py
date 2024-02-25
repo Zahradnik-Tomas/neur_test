@@ -1,3 +1,4 @@
+import collections
 import copy
 import pickle
 import os
@@ -20,8 +21,7 @@ class DDQN:
         self.funkceChyby = funkceChyby
         self.zbyvaKroku = nKroku
         self.mozneAkce = mozneAkce
-        self.velikostBufferu = velikostBufferu
-        self.buffer = []
+        self.buffer = collections.deque(maxlen=velikostBufferu)
 
     def ziskejAkci(self, stav):  # mozneAkce -> pocet moznych akci
         if np.random.random_sample() < self.epsion:
@@ -31,8 +31,6 @@ class DDQN:
         return akce
 
     def pridejDoBufferu(self, stAkOdNsH):  # [stav, akce, odmena, novyStav, hotovo]
-        if len(self.buffer) > self.velikostBufferu:
-            del self.buffer[0]
         self.buffer.append(stAkOdNsH)
 
     def vemZBufferu(self):
