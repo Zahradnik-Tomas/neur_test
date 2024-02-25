@@ -99,8 +99,9 @@ class Sit:
                     node.hodnota = np.tanh(node.hodnota)
                 for Synapsa in node.SynapsyListOut:
                     Synapsa.krokID = krokID
-                    Synapsa.hodnota = Synapsa.povolen * Synapsa.vaha * node.hodnota
-                    nodesTemp.append(self.listNodu[Synapsa.output])
+                    if Synapsa.povolen:
+                        Synapsa.hodnota = Synapsa.vaha * node.hodnota
+                        nodesTemp.append(self.listNodu[Synapsa.output])
                 if node.bias:
                     node.hodnota = 1.0
             nodes = nodesTemp.copy()
