@@ -84,7 +84,8 @@ class Sit:
         return output
 
     def SkutecnyForward(self, node,
-                        krokID, otecHledaInput=False):  # je to vice Forward nez Forward, ale chci aby Forward se jmenoval Forward, takze toto bude SkutecnyForward
+                        krokID,
+                        otecHledaInput=False):  # je to vice Forward nez Forward, ale chci aby Forward se jmenoval Forward, takze toto bude SkutecnyForward
         if node.krokID == krokID:
             return
         node.krokID = krokID
@@ -93,7 +94,9 @@ class Sit:
         node.hledaInput = True
         for i in range(node.ukoncenoHledani, len(node.SynapsyListInp)):
             Synapsa = node.SynapsyListInp[i]
-            if Synapsa.krokID != krokID and Synapsa.povolen:
+            if not Synapsa.povolen:
+                continue
+            if Synapsa.krokID != krokID:
                 if self.listNodu[Synapsa.input].hledaInput:
                     node.krokID *= -1
                     node.ukoncenoHledani = i
