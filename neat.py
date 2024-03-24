@@ -18,15 +18,22 @@ class Node:
         self.ukoncenoHledani = 0
 
 
-class Manager:  # TODO druhy, mutace, crossover, celkove lepsi implementace, nez pokus o ni po precteni papiru bez mysleni o tom
-    def __init__(self, pocetInputu, pocetOutputu):  # TODO vymysleni algoritmu novych konekci
+class Manager:  # TODO druhy, crossover, vymysleni a domysleni toho algoritmu (mohu tomu vubec rikat NEAT?)
+    def __init__(self, pocetInputu, pocetOutputu):
         self.pocetInputu = pocetInputu
         self.pocetOutputu = pocetOutputu
         self.dicSynaps = {}
         self.listSiti = []  # TODO listSiti nebo listDruhu nebo oboje?, listDruhu musi byt dikcionar
         self.id = 0
+        self.nejvyssi_node = 0
+        self.SanceMutaceVahSpecifickeSynapsy = 0.2
+        self.SanceMutaceSynaps = 0.2
+        self.SanceMutacePridaniNodu = 0.2
+        self.SanceMutacePridaniSynapsy = 0.2
+        self.SanceVypnutiSynapsy = 0.05
 
     def PridejEntry(self, input, output):
+        self.nejvyssi_node = max(self.nejvyssi_node, input, output)
         if self.KontrolaEntry(input, output):
             self.dicSynaps[f"{input}-{output}"] = Entry(input, output, self.id)
             self.id += 1
@@ -37,14 +44,53 @@ class Manager:  # TODO druhy, mutace, crossover, celkove lepsi implementace, nez
     def KontrolaEntry(self, input, output):
         return f"{input}-{output}" not in self.dicSynaps  # https://wiki.python.org/moin/TimeComplexity#dict
 
-    def ZmutujSit_PridejSynapsu(self, sit):
-        pass  # TODO
+    def ZmutujSit_PridejSynapsu(self, sit):  # Buh roni slzy
+        listus = list(sit.listNodu.keys())
+        while len(listus) > 0:
+            node1 = random.choice(listus)
+            listus.remove(node1)
+            if not sit.MoznostNoveKonekce(node1):
+                continue
+            listMoznosti = set(listus)
+            if node1 in sit.listKonekci:
+                dalsiList = set(sit.listKonekci[node1])
+                moznosti = list(listMoznosti.difference(dalsiList))
+            else:
+                moznosti = listus.copy()
+            while len(moznosti) > 0:
+                node2 = random.choice(moznosti)
+                moznosti.remove(node2)
+                idS = self.PridejEntry(node1, node2)
+                if sit.PridejSynapsu(Synapsa(node1, node2, random.random() - 0.5, idS)) == -1:
+                    continue
+                return 0
+        return -1
 
     def ZmutujSit_PridejNode(self, sit):  # TODO jeste odeber node? jak budu zmensovat tu sit?
-        pass  # TODO
+        if len(sit.listSynaps.values()) == 0:  # Tom tu, nebudu odebirat nody, budu odebirat vypnute synapsy potomku crossoveru
+            return -1
+        synapsa = random.choice(list(
+            sit.listSynaps.values()))
+        if synapsa.input == synapsa.output:
+            return -2
+        nodeId = self.nejvyssi_node + 1
+        idS = self.PridejEntry(synapsa.input, nodeId)
+        idS2 = self.PridejEntry(nodeId, synapsa.output)
+        synaps1 = Synapsa(synapsa.input, nodeId, synapsa.vaha, idS)
+        synaps2 = Synapsa(nodeId, synapsa.output, 1.0, idS2)
+        if sit.PridejSynapsu(synaps1) != -1 and sit.PridejSynapsu(synaps2) != -1:
+            synapsa.povolen = False
 
     def ZmutujSit_ZmutujVahy(self, sit):
-        pass  # TODO
+        for synapsa in sit.listSynaps.values():
+            if random.random() >= self.SanceMutaceVahSpecifickeSynapsy:
+                continue
+            synapsa.vaha *= random.uniform(0.98, 1.02)
+
+    def ZmutujSit_VypniSynapsy(self, sit):
+        for synapsa in sit.listSynaps.values():
+            if random.random() >= self.SanceVypnutiSynapsy:
+                synapsa.povolen = False
 
     def CrossOver(self, dominantni, recesivni):
         pass  # TODO
@@ -123,7 +169,9 @@ class Sit:
 
     def PridejSynapsu(self, Synapsa):
         if Synapsa.input == Synapsa.output:  # pokud by si treba bias neuron udelal primou konekci sam na sebe, tak by jeho output zacal nekontrolovatelne rust
-            return
+            return -2
+        if Synapsa.id in self.listSynaps:
+            return -1
         self.listSynaps[Synapsa.id] = Synapsa
         if not self.KontrolaNodu(Synapsa.input):
             self.listNodu[Synapsa.input] = Node()
@@ -134,6 +182,7 @@ class Sit:
         if not Synapsa.input in self.listKonekci:
             self.listKonekci[Synapsa.input] = []
         self.listKonekci[Synapsa.input].append(Synapsa.output)
+        return 0
 
     def MoznostNoveKonekce(self,
                            input):  # prozatimni vecicka co mi pomuze tvorit nove konekce
